@@ -1,6 +1,8 @@
 #include<iostream>
+//注释
 #include<string>
 #include<cctype>
+//注释
 using namespace std;
 int main() {
 	int n;

@@ -17,11 +17,15 @@
 
 ## 目录
 	一、基本识别(五大单词符号)
-	二、识别常量
-	三、预处理
-	四、消除冗余
-	五、括号匹配
-	六、
+	二、全体函数
+	三、预处理指令
+	四、识别数字、字母
+	五、识别常量
+	六、识别保留字
+	七、识别终结符
+	七、消除冗余
+	八、括号匹配
+	九、异常
 	错误问题
 
 
@@ -74,33 +78,49 @@ const unordered_set <string> separators(sepa, sepa + 8);
 ```
 
 
-	
+### 二、全体函数
+	// 判断数字
+	bool isDigit(char unknown);
+	// 判断字母
+	bool isLetter(char unknown);
+	// 判断关键字
+	bool isReserved(string unknown);
+	// 判断预处理
+	bool isPretreatment(string unknown);
+	// 判断运算符
+	bool isOperators(string unknown);
+	// 判断分隔符
+	bool isSeparators(string unknown);
+	// 判断标识符
+	bool isIdentifiers(string unknown);
+	// 判断常数
+	bool isConstant(string unknown);
 
-#### define,const 无法判断，错误存在函数
-
-#### 无法判断模板<string>
-
+### 预处理指令
+	读到"#"，读取整行，不判断预处理指令是否合法，原因详见”错误问题“1
 
 
-#### 判断字母
-```c++
-// 判断字母
-bool isLetter(char unknown)
-{
-	return (unknown >= 'A' && unknown <= 'Z') || 
-	(unknown >= 'a' && unknown <= 'z');
-}
-```
+
+
+
+
+
 
 ### 错误问题
 	1.常量无法识别
 	已知const和#define均为定义常量的指令
 	存在使用C++定义常量函数，例如#define fun(a,b){return a+b;}
-	这样的情况暂时无法想出合理的词法分析，故保留问题、
+	这样的情况暂时无法想出合理的词法分析，故不考虑
+	未进行判断字符串、字符输入是否合法
 	
 	2.复杂数组无法识别
 	例如在数组中使用复杂的计算
 
 	3.部分运算符无法分析
 	"<<"、">>"考虑到会出现cout << (2 >> 1)，词法分析器遇到这种情况只分析，不判断;
-	"*"考虑到指针，该词法分析器不识别指针
+	"*"考虑到指针，该词法分析器不识别指针类型
+	"<>"的情况存在一定的复杂程度，存在模板，例如<string>，该词法分析器不识别该类型代码
+	"?:"条件运算符无法识别
+	类型强制转换无法识别，例如(int),(double)
+
+	4.
