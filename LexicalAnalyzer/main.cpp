@@ -8,15 +8,15 @@
 using namespace std;
 
 /*
- * 1.保留字/保留字:key
+ * 1.保留字/基本字:key
  * 2.标识符:标记常量、数组、类型、变量、过程、函数名
  * 3.常数:整型、实型、布尔
  * 4.运算符:+-*%/><
- * 5.届符/分隔符:,;(){}
+ * 5.届符/分隔符:,;(){}[]
  */
 
- // 1.保留字/保留字:key
-const string reserved[] = {
+ // 1.保留字/基本字:key
+const string reserved[62] = {
 	"asm", "auto", "bool", "break", "case", "catch", "char", "class",
 	"const", "const_cast", "continue", "default", "delete", "do", "double", "dynamic_cast",
 	"else", "enum", "explicit", "export", "exterm", "false", "float", "for",
@@ -28,34 +28,30 @@ const string reserved[] = {
 };
 const unordered_set<string> keys(reserved, reserved + 62);
 
-// 2.标识符:标记常量、数组、类型、变量、过程、函数名
-// unordered_set <string> identifiers;
-
 // 3.常数:整型、实型、布尔;
 //unordered_set <string> constants;
 
 // 4.运算符:+-*%/><
-const string op[] = { "+","-","*","/","%","&","|","&&","||","=","!=","<",">","<=",">=","++","--", "+=" };
-const unordered_set <string> operators(op, op + 17);
+const string op[21] = { "+","-","*","/","%","&","|","&&","||","=","!=","<",">","<=",">=","++","--", "+=", "-=", "<<", ">>"};
+const unordered_set <string> operators(op, op + 21);
 
 // 5.届符/分隔符:,;(){}
-const string sepa[] = { ",", ";", "(", ")", "{", "}" };
-const unordered_set <string> separators(sepa, sepa + 6);
+const string sepa[8] = { ",", ";", "(", ")", "{", "}", "[", "]"};
+const unordered_set <string> separators(sepa, sepa + 8);
 
 // number数字规则
 // 数字
-const string number_rule = "^([\\+\\-]?\\d+\\.\\d+)|([\\+\\-]?\\d+)|([\\+\\-]?\\.\\d+)$";
+const string number_rule = "^([+-]?\\d+\\.\\d+)|([+-]?\\d+)|([+-]?\\.\\d+)$";
 const regex pattern_number(number_rule, regex::icase);
 // 科学计数
 const string scientific_rule = "^[+-]?((\\d+\\.?\\d*)|(\\.\\d+))[Ee][+-]?\\d+$";
 const regex pattern_scientific(scientific_rule, regex::icase);
-// 十六进制^(0x | 0X)？[a-fA-F0-9] $
-const string hex_rule = "^[\+\-]?0[xX]([A-Fa-f0-9])+$";
+// 十六进制
+const string hex_rule = "^[+-]?0[xX]([A-Fa-f0-9])+$";
 const regex pattern_hex(hex_rule, regex::icase);
-// 八进制^(0x | 0X)？[a-fA-F0-9] $
+// 八进制
 //const string oct_rule = "^0([0-7])+$";
 //const regex pattern_oct(oct_rule, regex::icase);
-
 
 // 判断数字
 bool isDigit(char unknown);
@@ -85,6 +81,8 @@ private:
 	ifstream fin;
 	ofstream fout;
 	int a = 2;
+	// 2.标识符:标记常量、数组、类型、变量、过程、函数名
+	// unordered_set <string> identifiers;
 public:
 	LexicalAnalyzer(string input, string output) {
 		fin.open(input);
@@ -124,6 +122,7 @@ int main()
 		string n;
 		cin >> n;
 		cout << isScientificCounting(n) << endl;
+		cout << (2 >> 1);
 	}
 	//string input = "input1.txt";
 	//string output = "output.txt";
