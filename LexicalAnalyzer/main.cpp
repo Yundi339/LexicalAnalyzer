@@ -36,7 +36,7 @@ const string op[21] = { "+","-","*","/","%","&","|","&&","||","=","!=","<",">","
 const unordered_set <string> operators(op, op + 21);
 
 // 5.½ì·û/·Ö¸ô·û:,;(){}
-const string sepa[9] = { ",", ";", "(", ")", "{", "}", "[", "]" ,"\""};
+const string sepa[9] = { ",", ";", "(", ")", "{", "}", "[", "]" ,"\"" };
 const unordered_set <string> separators(sepa, sepa + 8);
 
 // ±äÁ¿ÃüÃû¹æÔò
@@ -147,6 +147,7 @@ public:
 						{
 							fout << "(2,\"" << s << "\")" << endl;
 						}
+						break;
 					}
 					s += ch;
 				}
@@ -156,10 +157,43 @@ public:
 			else if (isDigit(ch))
 			{
 				s = ch;
+				int i = 0;
 				while (fin.peek() != EOF)
 				{
 					fin.get(ch);
-					if (isRedundancy(ch)) continue;
+					// ÅĞ¶Ï·Ö¸ô
+					if (!isConstant(s + ch + '1') || isSeparators(to_string(ch)) || ch == '=')
+					{
+						ch = ' ';
+						cout << "eoorÅĞ¶ÏÊı×Ö" << s << endl;
+					}
+					// ÅĞ¶ÏÈßÓà
+					if (isRedundancy(ch))
+					{
+						fin.seekg(-1, ios::cur);
+						// ÅĞ¶Ï×Ö·û´®Âú×ãÊı×Ö¹æÔò
+						if (isConstant(s))
+						{
+							fout << "(3,\"" << s << "\")" << endl;
+						}
+						else
+						{
+							fout << "(error,\"" << s << "\")" << endl;
+						}
+						break;
+					}
+					s += ch;
+				}
+				continue;
+			}
+			// ÅĞ¶ÏÔËËã·û
+			else if (isOperators(to_string(ch)))
+			{
+				s = ch;
+				while (fin.peek() != EOF)
+				{
+					fin.get(ch);
+					if (isRedundancy(ch)) { continue; }
 					// ÅĞ¶Ï×Ö·û´®ÊÇ·ñÂú×ãÃüÃû¹æÔò
 					if (!isConstant(s += ch))
 					{
@@ -169,12 +203,6 @@ public:
 					s += ch;
 				}
 				continue;
-
-			}
-			// ÅĞ¶ÏÔËËã·û
-			else if (isOperators(to_string(ch)))
-			{
-
 			}
 			else
 			{
