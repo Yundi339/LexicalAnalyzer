@@ -35,9 +35,9 @@ const unordered_set<string> keys(reserved, reserved + 62);
 const string op[21] = { "+","-","*","/","%","&","|","&&","||","=","!=","<",">","<=",">=","++","--", "+=", "-=", "<<", ">>" };
 const unordered_set <string> operators(op, op + 21);
 
-// 5.届符/分隔符:,;(){}
-const string sepa[9] = { ",", ";", "(", ")", "{", "}", "[", "]" ,"\"" };
-const unordered_set <string> separators(sepa, sepa + 8);
+// 5.届符/分隔符:,;(){}'"
+const char sepa[10] = { ',', ';', '(', ')', '{', '}', '[', ']' ,'\"','\'' };
+const unordered_set <char> separators(sepa, sepa + 10);
 
 // 变量命名规则
 const string variable_name_rules = "^[A-Za-z_][\\dA-Za-z_]*$";
@@ -68,9 +68,11 @@ bool isReserved(string unknown);
 // 判断运算符
 bool isOperators(string unknown);
 // 判断分隔符
-bool isSeparators(string unknown);
+bool isSeparators(char unknown);
 // 判断常数
 bool isConstant(string unknown);
+// 判断冗余
+bool isRedundancy(char unknown);
 
 
 
@@ -78,11 +80,41 @@ bool isConstant(string unknown);
 class LexicalAnalyzer
 {
 private:
-	ifstream fin;
-	ofstream fout;
-	int a = 2;
+	ifstream fin;//输入文件
+	ofstream fout;//输出文件
+	stack<char> brackets;//括号
 	// 2.标识符:标记常量、数组、类型、变量、过程、函数名
 	// unordered_set <string> identifiers;
+
+	//// 登记类型、变量、过程、函数名
+	//void addIdentifiers(string unknown)
+	//{
+	//	if (identifiers.count(unknown))
+	//	{
+	//		identifiers.insert(unknown);
+	//	}
+	//}
+
+	//匹配括号
+	bool matchBrackets(char unknown)
+	{
+		if (brackets.empty())
+		{
+			return false;
+		}
+		char ch = brackets.top();
+		brackets.pop();
+		if ((ch == '(' && unknown == ')') || (ch == '[' && unknown == ']') || (ch == '{' && unknown == '}'))
+		{
+			return true;
+		}
+		else
+		{
+			 cout << "括号不匹配" << unknown << endl;
+			return false;
+		}
+	}
+
 public:
 	LexicalAnalyzer(string input, string output) {
 		fin.open(input);
@@ -117,6 +149,50 @@ public:
 				fout << "预处理指令" << "#" + s << endl;
 				continue;
 			}
+			//判断分隔符(括号匹配)
+			else if (isSeparators(ch))
+			{
+				if (ch == '(' || ch == '[' || ch == '{')
+				{
+					brackets.push(ch);
+					fout << "(5,\"" << ch << "\")" << endl;
+				}
+				else if (ch == ')' || ch == '[' || ch == '{')
+				{
+					if (!matchBrackets(ch))
+					{
+						// error
+						fout << "匹配" << ch << "失败" << endl;
+						return;
+					}
+					else
+					{
+						fout << "(5,\"" << ch << "\")" << endl;
+					}
+				}
+				// 判断字符串
+				else if (ch == '\"' || ch == '\'')
+				{
+					if (getline(fin, s, ch))
+					{
+						// 匹配到temp
+						if (s[s.length() - 1] == ch)
+						{
+							fout << "(3,\"" << ch + s << "\")" << endl;
+						}
+						// error
+						else
+						{
+							fout << "匹配" << ch << "失败" << endl;
+							return;
+						}
+					}
+				}
+				else
+				{
+
+				}
+			}
 			// 判断标识符
 			else if (isLetter(ch) || ch == '_')
 			{
@@ -124,6 +200,14 @@ public:
 				while (fin.peek() != EOF)
 				{
 					fin.get(ch);
+					if (ch == '\'' || ch == '\"')
+					{
+						fin.seekg(-1, ios::cur);
+						string ss;
+						fin >> ss;
+						fout << "变量名错误" << s + ss << endl;
+						return;
+					}
 					// 判断字符串是否满足命名规则
 					if (!isVariable(s += ch))
 					{
@@ -151,21 +235,18 @@ public:
 					}
 					s += ch;
 				}
-				continue;
 			}
 			//判断数字
 			else if (isDigit(ch))
 			{
 				s = ch;
-				int i = 0;
 				while (fin.peek() != EOF)
 				{
 					fin.get(ch);
-					// 判断分隔
-					if (!isConstant(s + ch + '1') || isSeparators(to_string(ch)) || ch == '=')
+					// 判断特殊符号
+					if ((isOperators(to_string(ch)) && !isConstant(s + ch + '1')) || isSeparators(ch))
 					{
 						ch = ' ';
-						cout << "eoor判断数字" << s << endl;
 					}
 					// 判断冗余
 					if (isRedundancy(ch))
@@ -175,12 +256,13 @@ public:
 						if (isConstant(s))
 						{
 							fout << "(3,\"" << s << "\")" << endl;
+							break;
 						}
 						else
 						{
-							fout << "(error,\"" << s << "\")" << endl;
+							fout << "非常量" << s << endl;
+							return;
 						}
-						break;
 					}
 					s += ch;
 				}
@@ -204,83 +286,46 @@ public:
 				}
 				continue;
 			}
-			else
-			{
-				cout << "异常" << endl;
-			}
-			continue;
-
-
-
-			// 匹配注释
-			if (s == "/")
+			else if (s == "/")
 			{
 				// 单行注释
 				if (ch == '/')
 				{
 					getline(fin, s);
 					s = "";
-					mode = 0;
 					continue;
 				}
 				// 多行注释
 				else if (ch == '*')
 				{
 					// 匹配*/
-					bool flag_com = true;
-					while (flag_com)
+					while (getline(fin, s, '*'))
 					{
 						// 匹配到'*'
-						if (getline(fin, s, '*') && fin.peek() != EOF)
+						if (fin.peek() != EOF)
 						{
 							fin.get(ch);
-							if (ch == '/') {
-								flag_com = false;
+							if (ch == '/') 
+							{
+								break;
 							}
 						}
-						else {
-							break;
+						// error
+						else 
+						{
+							fout << "未匹配到注释*/" << endl;
+							return;
 						}
 					}
-					if (flag_com)
-					{
-						//error 未匹配
-						cout << "未匹配到注释/**/" << endl;
-					}
-					else
-					{
-						cout << "匹配注释/**/" << endl;
-					}
 				}
 			}
-
-			//不读字符串或字符
-			if (mode != 3)
+			else
 			{
-				// 吃冗余
-				if (ch == ' ' || ch == '\r' || ch == '\n' || ch == '\t')
-				{
-					continue;
-				}
-				else if (ch == '/')
-				{
-					s = "/";
-
-				}
+				cout << "异常" << endl;
 			}
-
-
+			continue;
 		}
 	}
-
-	//// 登记类型、变量、过程、函数名
-	//void addIdentifiers(string unknown)
-	//{
-	//	if (identifiers.count(unknown))
-	//	{
-	//		identifiers.insert(unknown);
-	//	}
-	//}
 
 	~LexicalAnalyzer() {
 		fin.close();
@@ -291,11 +336,6 @@ public:
 
 int main()
 {
-	//while (1) {
-	//	string n;
-	//	cin >> n;
-	//	cout << isVariable(n) << endl;
-	//}
 	string input = "input1.txt";
 	string output = "output.txt";
 	LexicalAnalyzer p(input, output);
@@ -335,7 +375,7 @@ bool isOperators(string unknown)
 }
 
 // 判断分隔符
-bool isSeparators(string unknown)
+bool isSeparators(char unknown)
 {
 	return separators.count(unknown);
 }
