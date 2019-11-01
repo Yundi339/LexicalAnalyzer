@@ -1,3 +1,4 @@
+#include <windows.h>
 #include <iostream>
 #include <cstdio>
 #include <string>
@@ -32,12 +33,12 @@ const unordered_set<string> keys(reserved, reserved + 62);
 //unordered_set <string> constants;
 
 // 4.运算符:+-*%/><
-const string op[21] = { "+","-","*","/","%","&","|","&&","||","=","!=","<",">","<=",">=","++","--", "+=", "-=", "<<", ">>" };
-const unordered_set <string> operators(op, op + 21);
+const string op[30] = { "!", "+","-","*","/","%","&","|","&&","||","=","==", "!=","<",">","<=",">=","++","--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "<<", ">>", ">>=", "<<=" };
+const unordered_set <string> operators(op, op + 30);
 
 // 5.届符/分隔符:,;(){}'"
-const char sepa[10] = { ',', ';', '(', ')', '{', '}', '[', ']' ,'\"','\'' };
-const unordered_set <char> separators(sepa, sepa + 10);
+const char sepa[11] = { ',',':', ';', '(', ')', '{', '}', '[', ']' ,'\"','\'' };
+const unordered_set <char> separators(sepa, sepa + 11);
 
 // 变量命名规则
 const string variable_name_rules = "^[A-Za-z_][\\dA-Za-z_]*$";
@@ -82,10 +83,9 @@ class LexicalAnalyzer
 private:
 	ifstream fin;//输入文件
 	ofstream fout;//输出文件
-	stack<char> brackets;//括号
 	// 2.标识符:标记常量、数组、类型、变量、过程、函数名
 	// unordered_set <string> identifiers;
-
+	stack<char> brackets;//括号
 	//// 登记类型、变量、过程、函数名
 	//void addIdentifiers(string unknown)
 	//{
@@ -110,7 +110,7 @@ private:
 		}
 		else
 		{
-			 cout << "括号不匹配" << unknown << endl;
+			cout << "括号不匹配" << unknown << endl;
 			return false;
 		}
 	}
@@ -122,20 +122,16 @@ public:
 		fout.open(output);
 		if (!fout) { cout << "Cannot out file" << endl; return; }
 	}
-
+	
 	void run()
 	{
-		// mode状态：
-		// 0: 指令清空
-		// 1: 首字符为标识符
-		// 2: 首字符为数字
-		// 3: 读字符串模式
-		// 4: 寻找括号模式
-		// 5: 寻找结束符
 		char ch;
 		string s = "";
-		while (fin.peek() != EOF) {
+		while (fin.peek() != EOF) 
+		{
 			fin.get(ch);
+
+			cout << fin.tellg() << endl;
 			// 处理冗余
 			if (isRedundancy(ch))
 			{
@@ -149,6 +145,61 @@ public:
 				fout << "预处理指令" << "#" + s << endl;
 				continue;
 			}
+			else if (ch == '/' && fin.peek() != EOF)
+			{
+				// 单行注释
+				fin.get(ch);
+				if (ch == '/')
+				{
+					getline(fin, s);
+					s = "";
+					continue;
+				}
+				// 多行注释
+				else if (ch == '*')
+				{
+					// 匹配*/
+					bool flag = true;
+					while (getline(fin, s, '/'))
+					{
+						// 匹配到'*'
+						if (s[s.length() - 1] == '*')
+						{
+							fin.seekg(-1, ios::cur);
+							fin.get(ch);
+							if (ch == '/')
+							{
+								ch = ' ';
+								flag = false;
+								break;
+							}
+							else
+							{
+								continue;
+							}
+						}
+					}
+					if(flag)
+					{
+						fout << "未匹配到注释*/" << endl;
+						return;
+					}
+					else
+					{
+						continue;
+					}
+				}
+				else
+				{
+					fin.seekg(-1, ios::cur);
+					ch = '/';
+				}
+			}
+			// 处理冗余
+			if (isRedundancy(ch))
+			{
+				continue;
+			}
 			//判断分隔符(括号匹配)
 			else if (isSeparators(ch))
 			{
@@ -157,7 +208,7 @@ public:
 					brackets.push(ch);
 					fout << "(5,\"" << ch << "\")" << endl;
 				}
-				else if (ch == ')' || ch == '[' || ch == '{')
+				else if (ch == ')' || ch == ']' || ch == '}')
 				{
 					if (!matchBrackets(ch))
 					{
@@ -176,27 +227,20 @@ public:
 					if (getline(fin, s, ch))
 					{
 						// 匹配到temp
-						if (s[s.length() - 1] == ch)
-						{
-							fout << "(3,\"" << ch + s << "\")" << endl;
-						}
-						// error
-						else
-						{
-							fout << "匹配" << ch << "失败" << endl;
-							return;
-						}
+						fout << "(3,\"" << ch + s + ch << "\")" << endl;
 					}
 				}
 				else
 				{
-
+					fout << "(5,\"" << ch << "\")" << endl;
 				}
 			}
 			// 判断标识符
 			else if (isLetter(ch) || ch == '_')
 			{
 				s = ch;
+
+				cout << fin.tellg() << endl;
 				while (fin.peek() != EOF)
 				{
 					fin.get(ch);
@@ -208,8 +252,9 @@ public:
 						fout << "变量名错误" << s + ss << endl;
 						return;
 					}
+
 					// 判断字符串是否满足命名规则
-					if (!isVariable(s += ch))
+					if (!isVariable(s + ch))
 					{
 						fin.seekg(-1, ios::cur);
 						// 判断保留字
@@ -244,7 +289,7 @@ public:
 				{
 					fin.get(ch);
 					// 判断特殊符号
-					if ((isOperators(to_string(ch)) && !isConstant(s + ch + '1')) || isSeparators(ch))
+					if ((isOperators(string(1,ch)) && !isConstant(s + ch + '1')) || isSeparators(ch))
 					{
 						ch = ' ';
 					}
@@ -269,65 +314,62 @@ public:
 				continue;
 			}
 			// 判断运算符
-			else if (isOperators(to_string(ch)))
+			else if (isOperators(string(1,ch)))
 			{
-				s = ch;
-				while (fin.peek() != EOF)
+				char temp = ch;
+				if (fin.peek() != EOF)
 				{
 					fin.get(ch);
-					if (isRedundancy(ch)) { continue; }
-					// 判断字符串是否满足命名规则
-					if (!isConstant(s += ch))
+					if (isOperators(string(1,ch)) && isOperators(string(1,temp) + string(1,ch)))
 					{
-						fin.seekg(-1, ios::cur);
-						fout << "(3,\"" << s << "\")" << endl;
-					}
-					s += ch;
-				}
-				continue;
-			}
-			else if (s == "/")
-			{
-				// 单行注释
-				if (ch == '/')
-				{
-					getline(fin, s);
-					s = "";
-					continue;
-				}
-				// 多行注释
-				else if (ch == '*')
-				{
-					// 匹配*/
-					while (getline(fin, s, '*'))
-					{
-						// 匹配到'*'
+						char temp2 = ch;
 						if (fin.peek() != EOF)
 						{
 							fin.get(ch);
-							if (ch == '/') 
+							if (isOperators(string(1,ch)) && isOperators(string(1,temp) + string(1,temp2) + string(1,ch)))
 							{
-								break;
+								fout << "(4,\"" << string(1,temp) + string(1,temp2) + string(1,ch) << "\")" << endl;
+							}
+							else
+							{
+								fin.seekg(-1, ios::cur);
+								fout << "(4,\"" << string(1,temp) + string(1,temp2) << "\")" << endl;
 							}
 						}
-						// error
-						else 
+						else
 						{
-							fout << "未匹配到注释*/" << endl;
-							return;
+							fout << "(4,\"" << string(1,temp) + string(1,temp2) << "\")" << endl;
 						}
 					}
+					else
+					{
+						fin.seekg(-1, ios::cur);
+						fout << "(4,\"" << string(1,temp) << "\")" << endl;
+					}
 				}
+				else
+				{
+					fout << "(4,\"" << string(1,ch) << "\")" << endl;
+				}
+			}
+			else if (ch == '.')
+			{
+				fout << "(4,\"" << string(1, ch) << "\")" << endl;
 			}
 			else
 			{
 				cout << "异常" << endl;
+				return;
 			}
-			continue;
+		}
+		if (!brackets.empty()) 
+		{
+			fout << "括号不匹配" << endl;
 		}
 	}
 
-	~LexicalAnalyzer() {
+	~LexicalAnalyzer()
+	{
 		fin.close();
 		fout.close();
 	}
@@ -336,10 +378,17 @@ public:
 
 int main()
 {
-	string input = "input1.txt";
-	string output = "output.txt";
-	LexicalAnalyzer p(input, output);
-	p.run();
+	while (true)
+	{
+		string input;
+		cin >> input;
+		if (input == "0")
+			break;
+		string output = "output" + input + ".txt";
+		LexicalAnalyzer p("input" + input + ".txt", output);
+		p.run();
+	}
+	system("pause");
 	return 0;
 }
 
@@ -371,7 +420,7 @@ bool isReserved(string unknown)
 // 判断运算符
 bool isOperators(string unknown)
 {
-	return operators.count(unknown);
+	return operators.find(unknown) != operators.end();
 }
 
 // 判断分隔符
